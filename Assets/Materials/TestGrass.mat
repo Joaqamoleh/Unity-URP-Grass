@@ -79,6 +79,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _AlphaClip: 0
+    - _Bend_Delta: 0.2
     - _Blend: 0
     - _BumpScale: 1
     - _ClearCoatMask: 0
@@ -106,9 +107,11 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _Base_Color: {r: 0.015948718, g: 0.26415092, b: 0.025494935, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
+    - _Tip_Color: {r: 0.037967186, g: 0.745283, b: 0.04300674, a: 1}
   m_BuildTextureStacks: []
 --- !u!114 &6752747768837198391
 MonoBehaviour:
