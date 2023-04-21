@@ -1,5 +1,18 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-843219202775578334
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  version: 5
 --- !u!21 &2100000
 Material:
   serializedVersion: 8
@@ -7,7 +20,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: TestGrass
+  m_Name: DeadGrass
   m_Shader: {fileID: 4800000, guid: 9bbb130c2e3159a418d7a531eef4c904, type: 3}
   m_ValidKeywords: []
   m_InvalidKeywords: []
@@ -79,7 +92,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _AlphaClip: 0
-    - _Bend_Delta: 0.12
+    - _Bend_Delta: 0.019
     - _Blend: 0
     - _BumpScale: 1
     - _ClearCoatMask: 0
@@ -93,12 +106,12 @@ Material:
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossyReflections: 0
-    - _Grass_Bend_Max: 0.5
-    - _Grass_Curvature: 4
-    - _Grass_Height_Max: 1.59
-    - _Grass_Height_Min: 0
-    - _Grass_Width_Max: 0.1
-    - _Grass_Width_Min: 0.043
+    - _Grass_Bend_Max: 1
+    - _Grass_Curvature: 3.98
+    - _Grass_Height_Max: 3
+    - _Grass_Height_Min: 3
+    - _Grass_Width_Max: 0.055
+    - _Grass_Width_Min: 0.131
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.005
@@ -113,22 +126,9 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _Base_Color: {r: 0.015948718, g: 0.26415092, b: 0.025494935, a: 1}
+    - _Base_Color: {r: 0.8773585, g: 0.6536039, b: 0.04469555, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
-    - _Tip_Color: {r: 0.037967186, g: 0.745283, b: 0.04300674, a: 1}
+    - _Tip_Color: {r: 0.9056604, g: 0.89918375, b: 0.40498397, a: 1}
   m_BuildTextureStacks: []
---- !u!114 &6752747768837198391
-MonoBehaviour:
-  m_ObjectHideFlags: 11
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  version: 5
