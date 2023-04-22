@@ -5,7 +5,7 @@
 //    https://catlikecoding.com/unity/tutorials/advanced-rendering/tessellation/
 // Citations are in code as well for other sources for secondary things like math explanations
 
-Shader "FinalProjectShader/Grass"
+Shader "Custom/Grass"
 {
     // Properties contains parameters that can be set in the editor with materials that use this shader
     // Syntax is var_name("in editor name", Object) = (default value in editor)
@@ -22,6 +22,8 @@ Shader "FinalProjectShader/Grass"
         _Grass_Curvature("Blade Curvature", Range(1, 5)) = 2
         _Grass_Bend_Max("Grass Bendiness", Float) = 0.3
         _Slant_Delta("Grass Bend Variance", Range(0, 0.3)) = 0.2
+
+        _GrassTessellationDistance("Grass Distance", Range(0.1, 1)) = 0.1
     }
 
     // contains all of the "sub-shaders", basically all the different types of shaders that make up our
@@ -62,6 +64,8 @@ Shader "FinalProjectShader/Grass"
                 int _Grass_Curvature;
                 float _Grass_Bend_Max;
                 float _Slant_Delta;
+
+                float _GrassTessellationDistance;
             CBUFFER_END
 
             // structs for neatly packing vertex data, derived from this article
@@ -88,6 +92,12 @@ Shader "FinalProjectShader/Grass"
 				float2 uv      : TEXCOORD0;
 			};
 
+            struct TessellationFactors
+			{
+				float edge[3] : SV_TessFactor;
+				float inside  : SV_InsideTessFactor;
+			};
+
             // geometry shader takes some different data, so we need a new struct for it
             struct GeoData
             {
@@ -104,8 +114,78 @@ Shader "FinalProjectShader/Grass"
                 vOut.vertex = float4(TransformObjectToWorld(vIn.vertex), 1.0f);
                 vOut.normal = TransformObjectToWorldNormal(vIn.normal);
                 vOut.tangent = vIn.tangent;
+
                 return vOut;
             }
+
+            // The following Domain and Hull shaders and helper functions were derrived from:
+            // https://catlikecoding.com/unity/tutorials/advanced-rendering/tessellation/
+            float tessellationEdgeFactor(VertexInput vert0, VertexInput vert1)
+			{
+				float3 v0 = vert0.vertex.xyz;
+				float3 v1 = vert1.vertex.xyz;
+                // get the distance between each vertex
+				float edgeLength = distance(v0, v1);
+                // divide by the length we want from each blade of grass
+                // TODO: this can be editable by a random number to ensure grass is not completely uniform
+				return edgeLength / _GrassTessellationDistance;
+			}
+
+            // patch constant function, decides where the new vertices will be
+            TessellationFactors patchConstantFunction(InputPatch<VertexInput, 3> patch) {
+                // create our tesselation factors struct
+				TessellationFactors f;
+                // get the tessellation
+				f.edge[0] = tessellationEdgeFactor(patch[1], patch[2]);
+				f.edge[1] = tessellationEdgeFactor(patch[2], patch[0]);
+				f.edge[2] = tessellationEdgeFactor(patch[0], patch[1]);
+				f.inside = (f.edge[0] + f.edge[1] + f.edge[2]) / 3.0f;
+
+				return f;
+			}
+
+            // gets the data from the tessellated vertex and passes it to a vertexOutput object
+            // different from the vertex shader bc we dont project the data or anything
+            VertexOutput tessVertex(VertexInput v) {
+                VertexOutput o;
+
+				o.vertex = v.vertex;
+				o.normal = v.normal;
+				o.tangent = v.tangent;
+				o.uv = v.uv;
+
+				return o;
+            }
+
+            // Hull Shader
+            [domain("tri")]
+			[outputcontrolpoints(3)]
+			[outputtopology("triangle_cw")]
+			[partitioning("integer")]
+			[patchconstantfunc("patchConstantFunction")]
+			VertexInput hullShader(InputPatch<VertexInput, 3> patch, uint id : SV_OutputControlPointID)
+			{
+				return patch[id];
+			}
+            // Domain Shader
+            [domain("tri")]
+			VertexOutput domainShader(TessellationFactors factors, OutputPatch<VertexInput, 3> patch,
+            float3 barycentricCoordinates : SV_DomainLocation) {
+                VertexInput vertData;
+                // it was recommended I make a macro for bary coord interpolation
+                // for each fieldname in VertexInput.
+                #define INTERPOLATE_BARY(fieldname) vertData.fieldname = \
+					patch[0].fieldname * barycentricCoordinates.x + \
+					patch[1].fieldname * barycentricCoordinates.y + \
+					patch[2].fieldname * barycentricCoordinates.z;
+                // interpolate all of the properties
+                INTERPOLATE_BARY(vertex)
+                INTERPOLATE_BARY(normal)
+                INTERPOLATE_BARY(tangent)
+                INTERPOLATE_BARY(uv)
+                // return the vertex data as a VertexOutput for the geo shader
+                return tessVertex(vertData);
+			}
 
             // Geometry related functions derrived/inspired from this article https://roystan.net/articles/grass-shader/
 
@@ -220,8 +300,11 @@ Shader "FinalProjectShader/Grass"
 
             HLSLPROGRAM
                 #pragma require geometry
+                #pragma require tessellation tessHW
 
                 #pragma vertex vertShader
+                #pragma hull hullShader
+                #pragma domain domainShader
                 #pragma geometry geoShader
                 #pragma fragment fragShader
 

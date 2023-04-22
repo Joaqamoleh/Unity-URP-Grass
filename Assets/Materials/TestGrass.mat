@@ -93,17 +93,18 @@ Material:
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossyReflections: 0
-    - _Grass_Bend_Max: 0.5
+    - _Grass_Bend_Max: 2
     - _Grass_Curvature: 4
-    - _Grass_Height_Max: 1.59
-    - _Grass_Height_Min: 0
-    - _Grass_Width_Max: 0.1
-    - _Grass_Width_Min: 0.043
+    - _Grass_Height_Max: 1.33
+    - _Grass_Height_Min: 0.86
+    - _Grass_Width_Max: 0.15
+    - _Grass_Width_Min: 0
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.005
     - _QueueOffset: 0
     - _ReceiveShadows: 1
+    - _Slant_Delta: 0.2
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
