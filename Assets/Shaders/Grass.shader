@@ -4,6 +4,7 @@
 // CatLikeCoding's tesselation for UnityURP guide: 
 //    https://catlikecoding.com/unity/tutorials/advanced-rendering/tessellation/
 // Citations are in code as well for other sources for secondary things like math explanations
+// heightmap generated from https://heightmap.skydark.pl/
 
 Shader "Custom/Grass"
 {

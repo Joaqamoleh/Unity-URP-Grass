@@ -93,7 +93,8 @@ Material:
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossyReflections: 0
-    - _Grass_Bend_Max: 2
+    - _GrassTessellationDistance: 0.1
+    - _Grass_Bend_Max: 1
     - _Grass_Curvature: 4
     - _Grass_Height_Max: 1.33
     - _Grass_Height_Min: 0.86
