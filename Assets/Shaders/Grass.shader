@@ -269,7 +269,7 @@ Shader "Custom/Grass"
                 // directional wind
                 float Wavelength = 15;
                 float3 windAxis = normalize(float3( _Wind_Direction_Y, _Wind_Direction_X, 0.0f));
-                float wind = (((TWO_PI / Wavelength)  * (vPos.x - _Wind_Speed * _Time.x)));
+                float wind = (TWO_PI / Wavelength)  * ((vPos.x * windAxis.y + vPos.z * windAxis.x) - _Wind_Speed * _Time.x);
                 wind = clamp(wind % 1, -_Wind_Strength, _Wind_Strength);
                 float3x3 windMatrix = AngleAxis3x3(wind, windAxis); 
 
