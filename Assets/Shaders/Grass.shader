@@ -24,6 +24,9 @@ Shader "Custom/Grass"
         _Grass_Bend_Max("Grass Bendiness", Float) = 0.3
         _Slant_Delta("Grass Bend Variance", Range(0, 0.3)) = 0.2
 
+        _VisibilityMap("Grass Visibility Map", 2D) = "white" {}
+        _GrayScaleThreshold("Grass Visibility Threshold", Range(-0.1, 1)) = 0.5
+
         _Wind_Speed("Wind Speed", Range(0, 20)) = 5
         _Wind_Strength("Wind Strength", Range(0, 1.57)) = .7
         _Wavelength("Wind Wavelength", Range(0, 100)) = 15
@@ -73,6 +76,11 @@ Shader "Custom/Grass"
                 int _Grass_Curvature;
                 float _Grass_Bend_Max;
                 float _Slant_Delta;
+
+                // Grass visibility map properties
+                sampler2D _VisibilityMap;
+                float4 _VisibilityMap_ST;
+				float  _GrayScaleThreshold;
 
                 // wind parameters
                 float _Wind_Direction_X;
@@ -132,6 +140,7 @@ Shader "Custom/Grass"
                 vOut.vertex = float4(TransformObjectToWorld(vIn.vertex), 1.0f);
                 vOut.normal = TransformObjectToWorldNormal(vIn.normal);
                 vOut.tangent = vIn.tangent;
+                vOut.uv = TRANSFORM_TEX(vIn.uv, _VisibilityMap);
 
                 return vOut;
             }
@@ -249,79 +258,83 @@ Shader "Custom/Grass"
             // Geometry Shader
             [maxvertexcount(GRASS_SEGMENTS * 2 + 1)] // specifies the maximum amount of vertices the geo shader can make
             void geoShader(point VertexOutput input[1], inout TriangleStream<GeoData> stream) {
-                // grab data from our input
-                float3 vPos = input[0].vertex.xyz;
-                float3 vNorm = input[0].normal;
-                float4 vTangent = input[0].tangent;
-                // second tangent vector needed for calculations
-                // we multiply by W here because Unity stores binormal direction in w
-                float3 vBitangent = cross(vNorm, vTangent.xyz) * vTangent.w;
+                // check if grass should be grown in this spot
+                float sampleValue = tex2Dlod(_VisibilityMap, float4(input[0].uv, 0, 0)).r;
+                if(sampleValue >= _GrayScaleThreshold) {
+                    // grab data from our input
+                    float3 vPos = input[0].vertex.xyz;
+                    float3 vNorm = input[0].normal;
+                    float4 vTangent = input[0].tangent;
+                    // second tangent vector needed for calculations
+                    // we multiply by W here because Unity stores binormal direction in w
+                    float3 vBitangent = cross(vNorm, vTangent.xyz) * vTangent.w;
 
 
-                // This matrix transforms the grass blade from tangent space to local space
-                // This is kind of common knowledge but I implemented it from this article:
-                // https://roystan.net/articles/grass-shader/
-                float3x3 tangentToLocal = float3x3
-                (
-                    vTangent.x, vBitangent.x, vNorm.x,
-                    vTangent.y, vBitangent.y, vNorm.y,
-                    vTangent.z, vBitangent.z, vNorm.z
-                );
+                    // This matrix transforms the grass blade from tangent space to local space
+                    // This is kind of common knowledge but I implemented it from this article:
+                    // https://roystan.net/articles/grass-shader/
+                    float3x3 tangentToLocal = float3x3
+                    (
+                        vTangent.x, vBitangent.x, vNorm.x,
+                        vTangent.y, vBitangent.y, vNorm.y,
+                        vTangent.z, vBitangent.z, vNorm.z
+                    );
 
-                // directional wind
-                // the x and y labels do not neccesarily correspond to any actual directions, should change names later
-                float3 windAxis = normalize(float3( _Wind_Direction_Y, _Wind_Direction_X, 0.0f));
-                float wind = (TWO_PI / _Wavelength)  * ((vPos.x * windAxis.y + vPos.z * windAxis.x) - _Wind_Speed * _Time.x);
-                wind = clamp(wind % 1, -_Wind_Strength, _Wind_Strength);
-                float3x3 windMatrix = AngleAxis3x3(wind, windAxis); 
+                    // directional wind
+                    // the x and y labels do not neccesarily correspond to any actual directions, should change names later
+                    float3 windAxis = normalize(float3( _Wind_Direction_Y, _Wind_Direction_X, 0.0f));
+                    float wind = (TWO_PI / _Wavelength)  * ((vPos.x * windAxis.y + vPos.z * windAxis.x) - _Wind_Speed * _Time.x);
+                    wind = clamp(wind % 1, -_Wind_Strength, _Wind_Strength);
+                    float3x3 windMatrix = AngleAxis3x3(wind, windAxis); 
 
-                // grass sway
-                float sway = (_Sway_Intensity / 20) * normalize(float3(rand(vPos), rand(vPos), 0.0f)) * ((rand(vPos) - _Sway_Speed * _SinTime.x));
-                float3x3 swayMatrix = AngleAxis3x3(sway % 1, windAxis);
-
-
-                // rotates around the y axis for grass blade orientation
-                float3x3 rotMatrix = AngleAxis3x3(rand(vPos) * TWO_PI, float3(0.0f, 0.0f, 1.0f));
-
-                // rotates around the X axis for grass blade slant. Affected by a variable in editor
-                float3x3 bendMatrix = AngleAxis3x3(rand(vPos.zzx) * _Slant_Delta * PI, float3(1.0f, 0.0f, 0.0f));
+                    // grass sway
+                    float sway = (_Sway_Intensity / 20) * normalize(float3(rand(vPos), rand(vPos), 0.0f)) * ((rand(vPos) - _Sway_Speed * _SinTime.x));
+                    float3x3 swayMatrix = AngleAxis3x3(sway % 1, windAxis);
 
 
-                // Tip tf matrix applied by rotating and then bending
-                float3x3 tipTfMatrix = mul(mul(mul(mul(tangentToLocal, windMatrix), rotMatrix), bendMatrix), swayMatrix);
+                    // rotates around the y axis for grass blade orientation
+                    float3x3 rotMatrix = AngleAxis3x3(rand(vPos) * TWO_PI, float3(0.0f, 0.0f, 1.0f));
 
-                // base tf matrix is just rotation since its "on" the ground
-                float3x3 baseTfMatrix = mul(tangentToLocal, rotMatrix);
+                    // rotates around the X axis for grass blade slant. Affected by a variable in editor
+                    float3x3 bendMatrix = AngleAxis3x3(rand(vPos.zzx) * _Slant_Delta * PI, float3(1.0f, 0.0f, 0.0f));
 
-                // grass width and height and forward should be calculated here
-                float width = lerp(_Grass_Width_Min, _Grass_Width_Max, rand(vPos.xzy));
-                float height = lerp(_Grass_Height_Min, _Grass_Height_Max, rand(vPos.zyx));
-                float forward = rand(vPos.zzy) * _Grass_Bend_Max;
 
-                // make whole segment at once, set tip vertex at the end
-                for(int i = 0; i < GRASS_SEGMENTS; i++) {
-                    // first, determine how far along the grass blade we are
-                    // and determine what transformation matrix we need to use.
-                    // t is always between 0 and 1 and corresponds to the y
-                    // component of the uv
-                    float t = i / (float)GRASS_SEGMENTS;
-                    float3x3 tfMatrix = (i == 0) ? baseTfMatrix : tipTfMatrix;
-                    // I spent an hour debugging bc I forgot we are in tangent space
-                    // Since this is in tangent space, the Z axis is "up"
-                    // The math for calculating the offsets was derrived from https://roystan.net/articles/grass-shader/
-                    // but Im adding my own spice to it by messing with the paramaters a bit
-                    float3 vOffset = float3(width * (1 - t), pow(t, _Grass_Curvature) * forward, height * t);
-                    // append our 2 segment vertices to the Triangle Stream
-                    stream.Append(transformToClip(vPos, float3(vOffset.x, vOffset.y, vOffset.z), tfMatrix, float2(0.0f, t)));
-                    stream.Append(transformToClip(vPos, float3(-vOffset.x, vOffset.y, vOffset.z), tfMatrix, float2(1.0f, t)));
+                    // Tip tf matrix applied by rotating and then bending
+                    float3x3 tipTfMatrix = mul(mul(mul(mul(tangentToLocal, windMatrix), rotMatrix), bendMatrix), swayMatrix);
 
+                    // base tf matrix is just rotation since its "on" the ground
+                    float3x3 baseTfMatrix = mul(tangentToLocal, rotMatrix);
+
+                    // grass width and height and forward should be calculated here
+                    float width = lerp(_Grass_Width_Min, _Grass_Width_Max, rand(vPos.xzy));
+                    float height = lerp(_Grass_Height_Min, _Grass_Height_Max, rand(vPos.zyx));
+                    float forward = rand(vPos.zzy) * _Grass_Bend_Max;
+
+                    // make whole segment at once, set tip vertex at the end
+                    for(int i = 0; i < GRASS_SEGMENTS; i++) {
+                        // first, determine how far along the grass blade we are
+                        // and determine what transformation matrix we need to use.
+                        // t is always between 0 and 1 and corresponds to the y
+                        // component of the uv
+                        float t = i / (float)GRASS_SEGMENTS;
+                        float3x3 tfMatrix = (i == 0) ? baseTfMatrix : tipTfMatrix;
+                        // I spent an hour debugging bc I forgot we are in tangent space
+                        // Since this is in tangent space, the Z axis is "up"
+                        // The math for calculating the offsets was derrived from https://roystan.net/articles/grass-shader/
+                        // but Im adding my own spice to it by messing with the paramaters a bit
+                        float3 vOffset = float3(width * (1 - t), pow(t, _Grass_Curvature) * forward, height * t);
+                        // append our 2 segment vertices to the Triangle Stream
+                        stream.Append(transformToClip(vPos, float3(vOffset.x, vOffset.y, vOffset.z), tfMatrix, float2(0.0f, t)));
+                        stream.Append(transformToClip(vPos, float3(-vOffset.x, vOffset.y, vOffset.z), tfMatrix, float2(1.0f, t)));
+
+                    }
+                    // append the tip vertex to the stream
+                    // vertical offset is on the z-axis instead of y-axis because of the tangent to local transformation
+                    stream.Append(transformToClip(vPos, float3(0.0f, forward, height), tipTfMatrix, float2(0.5, 1.0f)));
+                    
+                    // apparently this is good practice
+                    stream.RestartStrip();
                 }
-                // append the tip vertex to the stream
-                // vertical offset is on the z-axis instead of y-axis because of the tangent to local transformation
-                stream.Append(transformToClip(vPos, float3(0.0f, forward, height), tipTfMatrix, float2(0.5, 1.0f)));
-                
-                // apparently this is good practice
-                stream.RestartStrip();
             }
         ENDHLSL // end of HLSL code
 
