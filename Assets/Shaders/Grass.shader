@@ -274,7 +274,7 @@ Shader "Custom/Grass"
 
                 // grass sway
                 float sway = (_Sway_Intensity / 20) * normalize(float3(rand(vPos), rand(vPos), 0.0f)) * ((rand(vPos) - _Sway_Speed * _SinTime.x));
-                float3x3 swayMatrix = AngleAxis3x3(sway % 1, normalize(float3( 0.5f, 0.5f, 0.0f)));
+                float3x3 swayMatrix = AngleAxis3x3(sway % 1, windAxis);
 
 
                 // rotates around the y axis for grass blade orientation
