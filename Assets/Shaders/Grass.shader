@@ -24,6 +24,12 @@ Shader "Custom/Grass"
         _Grass_Bend_Max("Grass Bendiness", Float) = 0.3
         _Slant_Delta("Grass Bend Variance", Range(0, 0.3)) = 0.2
 
+        _Wind_Speed("Wind Speed", Range(0, 5)) = 2
+        _Wind_Direction_X("Wind Direction x", Range(-1, 1)) = .5
+        _Wind_Direction_Y("Wind Direction y", Range(-1,1)) = .5
+        _Sway_Intensity("Sway Intensity", range(0, 10)) = .3
+        _Sway_Speed("Sway Speed", range(0, 10)) = 1
+
         _GrassTessellationDistance("Grass Distance", Range(0.1, 1)) = 0.1
     }
 
@@ -65,6 +71,13 @@ Shader "Custom/Grass"
                 int _Grass_Curvature;
                 float _Grass_Bend_Max;
                 float _Slant_Delta;
+
+                // wind parameters
+                float _Wind_Direction_X;
+                float _Wind_Direction_Y;
+                float _Wind_Speed;
+                float _Sway_Intensity;
+                float _Sway_Speed;
 
                 float _GrassTessellationDistance;
             CBUFFER_END
@@ -251,13 +264,29 @@ Shader "Custom/Grass"
                     vTangent.z, vBitangent.z, vNorm.z
                 );
 
+                // directional wind
+                float Wavelength = 15;
+                float wind = PI / Wavelength  * (vPos.x - _Wind_Speed * _SinTime.x);
+                wind = clamp(wind % 1, .5, 1.57);
+
+                float3 windAxis = normalize(float3( _Wind_Direction_X, _Wind_Direction_Y, 0.0f));
+                float3x3 windMatrix = AngleAxis3x3(wind, windAxis); 
+
+                // grass sway
+                float sway = (_Sway_Intensity / 20) * normalize(float3(rand(vPos), rand(vPos), 0.0f)) * ((rand(vPos) - _Sway_Speed * _SinTime.x));
+                float3x3 swayMatrix = AngleAxis3x3(sway % 1, normalize(float3( 0.5f, 0.5f, 0.0f)));
+
+
                 // rotates around the y axis for grass blade orientation
                 float3x3 rotMatrix = AngleAxis3x3(rand(vPos) * TWO_PI, float3(0.0f, 0.0f, 1.0f));
+
                 // rotates around the X axis for grass blade slant. Affected by a variable in editor
                 float3x3 bendMatrix = AngleAxis3x3(rand(vPos.zzx) * _Slant_Delta * PI, float3(1.0f, 0.0f, 0.0f));
 
+
                 // Tip tf matrix applied by rotating and then bending
-                float3x3 tipTfMatrix = mul(mul(tangentToLocal, rotMatrix), bendMatrix);
+                float3x3 tipTfMatrix = mul(mul(mul(tangentToLocal, rotMatrix), bendMatrix), swayMatrix);
+
                 // base tf matrix is just rotation since its "on" the ground
                 float3x3 baseTfMatrix = mul(tangentToLocal, rotMatrix);
 
