@@ -26,6 +26,7 @@ Shader "Custom/Grass"
 
         _Wind_Speed("Wind Speed", Range(0, 20)) = 5
         _Wind_Strength("Wind Strength", Range(0, 1.57)) = .7
+        _Wavelength("Wind Wavelength", Range(0, 100)) = 15
         _Wind_Direction_X("Wind Direction x", Range(-1, 1)) = 1
         _Wind_Direction_Y("Wind Direction y", Range(-1,1)) = 0
         _Sway_Intensity("Sway Intensity", range(0, 10)) = .3
@@ -78,6 +79,7 @@ Shader "Custom/Grass"
                 float _Wind_Direction_Y;
                 float _Wind_Speed;
                 float _Wind_Strength;
+                float _Wavelength;
                 float _Sway_Intensity;
                 float _Sway_Speed;
 
@@ -267,9 +269,9 @@ Shader "Custom/Grass"
                 );
 
                 // directional wind
-                float Wavelength = 15;
+                // the x and y labels do not neccesarily correspond to any actual directions, should change names later
                 float3 windAxis = normalize(float3( _Wind_Direction_Y, _Wind_Direction_X, 0.0f));
-                float wind = (TWO_PI / Wavelength)  * ((vPos.x * windAxis.y + vPos.z * windAxis.x) - _Wind_Speed * _Time.x);
+                float wind = (TWO_PI / _Wavelength)  * ((vPos.x * windAxis.y + vPos.z * windAxis.x) - _Wind_Speed * _Time.x);
                 wind = clamp(wind % 1, -_Wind_Strength, _Wind_Strength);
                 float3x3 windMatrix = AngleAxis3x3(wind, windAxis); 
 
