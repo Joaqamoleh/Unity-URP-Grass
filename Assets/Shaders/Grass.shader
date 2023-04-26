@@ -24,9 +24,10 @@ Shader "Custom/Grass"
         _Grass_Bend_Max("Grass Bendiness", Float) = 0.3
         _Slant_Delta("Grass Bend Variance", Range(0, 0.3)) = 0.2
 
-        _Wind_Speed("Wind Speed", Range(0, 5)) = 2
-        _Wind_Direction_X("Wind Direction x", Range(-1, 1)) = .5
-        _Wind_Direction_Y("Wind Direction y", Range(-1,1)) = .5
+        _Wind_Speed("Wind Speed", Range(0, 20)) = 5
+        _Wind_Strength("Wind Strength", Range(0, 1.57)) = .7
+        _Wind_Direction_X("Wind Direction x", Range(-1, 1)) = 1
+        _Wind_Direction_Y("Wind Direction y", Range(-1,1)) = 0
         _Sway_Intensity("Sway Intensity", range(0, 10)) = .3
         _Sway_Speed("Sway Speed", range(0, 10)) = 1
 
@@ -76,6 +77,7 @@ Shader "Custom/Grass"
                 float _Wind_Direction_X;
                 float _Wind_Direction_Y;
                 float _Wind_Speed;
+                float _Wind_Strength;
                 float _Sway_Intensity;
                 float _Sway_Speed;
 
@@ -266,10 +268,9 @@ Shader "Custom/Grass"
 
                 // directional wind
                 float Wavelength = 15;
-                float wind = PI / Wavelength  * (vPos.x - _Wind_Speed * _SinTime.x);
-                wind = clamp(wind % 1, .5, 1.57);
-
-                float3 windAxis = normalize(float3( _Wind_Direction_X, _Wind_Direction_Y, 0.0f));
+                float3 windAxis = normalize(float3( _Wind_Direction_Y, _Wind_Direction_X, 0.0f));
+                float wind = (((TWO_PI / Wavelength)  * (vPos.x - _Wind_Speed * _Time.x)));
+                wind = clamp(wind % 1, -_Wind_Strength, _Wind_Strength);
                 float3x3 windMatrix = AngleAxis3x3(wind, windAxis); 
 
                 // grass sway
@@ -285,7 +286,7 @@ Shader "Custom/Grass"
 
 
                 // Tip tf matrix applied by rotating and then bending
-                float3x3 tipTfMatrix = mul(mul(mul(tangentToLocal, rotMatrix), bendMatrix), swayMatrix);
+                float3x3 tipTfMatrix = mul(mul(mul(mul(tangentToLocal, windMatrix), rotMatrix), bendMatrix), swayMatrix);
 
                 // base tf matrix is just rotation since its "on" the ground
                 float3x3 baseTfMatrix = mul(tangentToLocal, rotMatrix);
