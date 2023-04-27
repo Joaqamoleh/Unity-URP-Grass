@@ -36,23 +36,11 @@ Shader "Custom/Grass"
         _Sway_Speed("Sway Speed", range(0, 10)) = 1
 
         _GrassTessellationDistance("Grass Distance", Range(0.1, 1)) = 0.1
+
+        _BaseMap("Base Map", 2D) = "white" {}
     }
 
-    // contains all of the "sub-shaders", basically all the different types of shaders that make up our
-    // grass shader such as the vertex, fragment, and other sub shaders
-    SubShader
-    {
-        Tags
-        {
-            "RenderPipeline" = "UniversalPipeline"
-            "RenderType" = "Opaque"
-			"Queue" = "Geometry"
-			
-        }
-        LOD 100 // idk what this does yet lmao
-		Cull Off // Apparently we want both sides of our grass to render? experiment with this later
-
-        HLSLINCLUDE // keyword to tell Unity this is in HLSL
+    HLSLINCLUDE // keyword to tell Unity this is in HLSL
         	// Unity imports
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -223,7 +211,7 @@ Shader "Custom/Grass"
                 GeoData g;
                 g.pos = TransformObjectToHClip(pos + mul(tfMatrix, offset));
                 g.uv = uv;
-                g.worldPos = TransformObjectToHClip(pos + mul(tfMatrix, offset));
+                g.worldPos = TransformObjectToWorld(pos + mul(tfMatrix, offset));
 
                 return g;
             }
@@ -338,6 +326,22 @@ Shader "Custom/Grass"
             }
         ENDHLSL // end of HLSL code
 
+    // contains all of the "sub-shaders", basically all the different types of shaders that make up our
+    // grass shader such as the vertex, fragment, and other sub shaders
+    SubShader
+    {
+        Tags
+        {
+            "RenderPipeline" = "UniversalPipeline"
+            "RenderType" = "Opaque"
+			"Queue" = "Geometry"
+			
+        }
+        LOD 100 // idk what this does yet lmao
+		Cull Off // Apparently we want both sides of our grass to render? experiment with this later
+
+        
+
         // Render pass for our grass shader
         Pass
         {
@@ -354,10 +358,58 @@ Shader "Custom/Grass"
                 #pragma geometry geoShader
                 #pragma fragment fragShader
 
+                #pragma prefer_hlslcc gles
+                #pragma exclude_renderers d3d11_9x
+                #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
+    
+                #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+
                 float4 fragShader(GeoData g) : SV_Target {
+                    float4 shadowColor = 1.0f;
+                    #ifdef _MAIN_LIGHT_SHADOWS
+                        VertexPositionInputs input  = (VertexPositionInputs)0;
+                        input.positionWS = g.worldPos;
+                        float4 shadowCoord = GetShadowCoord(input);
+                        float ambient = 0.25f;
+                        half attenuation = saturate(MainLightRealtimeShadow(shadowCoord) + ambient);
+                        shadowColor = lerp(0.0f, 1.0f, attenuation);
+                    #endif
                     // lerp is used to interpolate between base and tip colors for the gradient
-                    return lerp(_Base_Color, _Tip_Color, g.uv.y);
+                    return shadowColor * lerp(_Base_Color, _Tip_Color, g.uv.y);
                 }
+            ENDHLSL
+        }
+
+        Pass
+        {
+            name "ShadowCaster"
+            Tags
+            {
+                "LightMode" = "ShadowCaster"
+            }
+
+            HLSLPROGRAM
+            // Required to compile gles 2.0 with standard srp library
+            #pragma prefer_hlslcc gles
+            #pragma exclude_renderers d3d11_9x gles
+                    
+            #pragma vertex vertShader
+            #pragma hull hullShader
+            #pragma domain domainShader
+            #pragma geometry geoShader
+            #pragma fragment fragShaderShadow
+
+            	// Material Keywords
+            #pragma shader_feature _ALPHATEST_ON
+            #pragma shader_feature _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+            #pragma multi_compile_instancing
+
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
+            float4 fragShaderShadow(GeoData g) : SV_Target {
+                Alpha(SampleAlbedoAlpha(g.uv, TEXTURE2D_ARGS(_BaseMap, sampler_BaseMap)).a, _Base_Color, 1.0);
+                return 0;
+            }
             ENDHLSL
         }
     }
